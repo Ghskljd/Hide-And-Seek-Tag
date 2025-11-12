@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using Unity.Cinemachine;
 using Unity.Mathematics;
+using Unity.Netcode;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.TextCore.Text;
@@ -7,27 +9,48 @@ using UnityEngine.TextCore.Text;
 namespace FinalCharacterController
 {
     [DefaultExecutionOrder(-1)]
-    public class PlayerController : MonoBehaviour
+    public class PlayerController : NetworkBehaviour
     {
+        #region Components
         [Header("Components")]
         [SerializeField] private CharacterController characterController;
         [SerializeField] private Camera playerCamera;
         [SerializeField] private Transform playerBody;
+        [SerializeField] private CinemachineCamera cinemachineCameraPan;
+        [SerializeField] private CinemachineCamera cinemachineCameraAim;
+        #endregion
 
+        #region Movement Settings
         [Header("Movement Settings")]
         public float runSpeed = 4;
+        #endregion
 
+        #region Gravity
         [Header("Gravity Settings")]
         public float gravity = -9.81f;
+        private Vector3 gravityVector = Vector3.zero;
+        #endregion
 
-        private PlayerLocomotionInput playerLocomotionInput;
-
-        private IPlayerStates currentState;
         #region States
+        private IPlayerStates currentState;
         Dictionary<StateEnum, IPlayerStates> states;
         private IdleState idleState;
         private RunState runState;
         #endregion
+
+        private PlayerLocomotionInput playerLocomotionInput;
+
+        
+        public override void OnNetworkSpawn()
+        {
+            if (!IsOwner)
+                return;
+
+            playerCamera = Instantiate(playerCamera);
+            cinemachineCameraPan = Instantiate(cinemachineCameraPan);
+
+            cinemachineCameraPan.Follow = transform;
+        }
 
         private void Awake()
         {
@@ -60,13 +83,8 @@ namespace FinalCharacterController
             Vector3 cameraRightXZ = new Vector3(playerCamera.transform.right.x, 0f, playerCamera.transform.right.z).normalized;
             Vector3 movementDirection = (cameraRightXZ * playerLocomotionInput.movementInput.x + cameraForwardXZ * playerLocomotionInput.movementInput.y).normalized;
 
-            Vector3 inputDir = new Vector3(playerLocomotionInput.movementInput.x, 0f, playerLocomotionInput.movementInput.y);
-            if (inputDir.sqrMagnitude > 0.001f)
-            {
-                Vector3 lookDirection = cameraRightXZ * inputDir.x + cameraForwardXZ * inputDir.z;
-                Quaternion targetRotation = Quaternion.LookRotation(lookDirection);
-                playerBody.rotation = targetRotation;
-            }
+            Quaternion lookRotation = Quaternion.LookRotation(movementDirection);
+            playerBody.rotation = lookRotation;
 
             Vector3 move = movementDirection * runSpeed;
 
@@ -86,11 +104,13 @@ namespace FinalCharacterController
         {
             if (characterController.isGrounded)
             {
-                vector3.y = -2f;
+                gravityVector.y = gravity;
+                vector3.y = gravityVector.y;
             }
             else
             {
-                vector3.y = gravity;
+                gravityVector.y += gravity * Time.deltaTime;
+                vector3.y = gravityVector.y;
             }
 
             return vector3;

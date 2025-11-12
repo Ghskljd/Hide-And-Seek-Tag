@@ -15,7 +15,7 @@ MonoBehaviour:
   IsDefault: 1
   List:
   - Override: 0
-    Prefab: {fileID: 6195092558713305112, guid: 73f0004af8fcca24d8581f8614c8c5d2, type: 3}
+    Prefab: {fileID: 8629563717447033486, guid: a01b9d4ae9d675f4c824b2870514ec01, type: 3}
     SourcePrefabToOverride: {fileID: 0}
     SourceHashToOverride: 0
     OverridingTargetPrefab: {fileID: 0}
